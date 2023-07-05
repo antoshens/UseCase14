@@ -7,11 +7,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Remove="Resources\Controllers\TestController.fr-FR.resx" />
+    <EmbeddedResource Remove="Resources\TestController.CultureTest.fr-FR.resx" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Resources\Controllers\TestController.fr-FR.resx" />
+    <None Include="Resources\Views\Test\CultureTest.fr-FR.resx">
+      <SubType>Designer</SubType>
+      <Generator>PublicResXFileCodeGenerator</Generator>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Resources\Views\Test\CultureTest.en-US.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+    </EmbeddedResource>
+    <EmbeddedResource Update="Resources\Views\Test\CultureTest.uk-UA.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

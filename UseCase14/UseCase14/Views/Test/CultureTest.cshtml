@@ -1,0 +1,22 @@
+﻿@using Microsoft.AspNetCore.Mvc.Localization
+@using UseCase14.Controllers
+
+@model LocalizationViewModel
+@inject IViewLocalizer localizer
+
+<h2>@localizer["Date"] @localizer["Formats"]:</h2>
+<p>@Model.DateFormat1</p>
+<p>@Model.DateFormat2</p>
+<p>@Model.DateFormat3</p>
+<p>@Model.DateFormat4</p>
+
+<h2>@localizer["Number"] @localizer["Formats"]:</h2>
+<p>@Model.NumberFormat1</p>
+<p>@Model.NumberFormat2</p>
+<p>@Model.NumberFormat3</p>
+<p>@Model.NumberFormat4</p>
+
+<h2>@localizer["Units of Measurements"] @localizer["Formats"]:</h2>
+<p>@Model.InchesFormat @localizer["Inches"] @localizer["is equal to"] @Model.CentimetersFormat @localizer["Centimeters"]</p>
+<p>@Model.PoundsFormat @localizer["Pounds"] @localizer["is equal to"] @Model.KilogramsFormat @localizer["Kilograms"]</p>
+<p>@Model.LitersFormat @localizer["Liters"] @localizer["is equal to"] @Model.OuncesFormat @localizer["Ounces"]</p>

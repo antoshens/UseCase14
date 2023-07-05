@@ -1,0 +1,747 @@
+User:
+Please configure localization for ASP .NET 6
+
+ChatGPT:
+Sure, here's a general outline of how you can implement localization in ASP.NET 6. Note that this procedure involves a few different steps:
+
+Step 1: Setting up Resource Files
+
+Resource files are XML files that contain the localized strings. In Visual Studio, add a new folder to the root directory named "Resources". Inside this folder, create a new Resource file named "SharedResources.resx".
+
+This is the default resource file. You can add strings here like:
+
+xml
+Copy code
+<data name="Hello" xml:space="preserve">
+    <value>Hello</value>
+</data>
+For each language you want to support, add a new Resource file named like "SharedResources.{Culture}.resx". For example, "SharedResources.fr.resx" for French.
+
+Inside these files, you can add the translated strings:
+
+xml
+Copy code
+<data name="Hello" xml:space="preserve">
+    <value>Bonjour</value>
+</data>
+Step 2: Configuring Startup.cs
+
+Next, in the ConfigureServices method of your Startup.cs file (or Program.cs in ASP.NET 6.0 onwards), add the localization services:
+
+csharp
+Copy code
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+    services.Configure<RequestLocalizationOptions>(
+        options =>
+        {
+            var supportedCultures = new[] { new CultureInfo("en-US"), new CultureInfo("fr") };
+            options.DefaultRequestCulture = new RequestCulture(culture: "en-US", uiCulture: "en-US");
+            options.SupportedCultures = supportedCultures;
+            options.SupportedUICultures = supportedCultures;
+        });
+
+    // Rest of your services configuration
+}
+In the Configure method, add the localization middleware. Make sure to add it before app.UseEndpoints():
+
+csharp
+Copy code
+public void Configure(IApplicationBuilder app)
+{
+    var locOptions = app.ApplicationServices.GetService<IOptions<RequestLocalizationOptions>>();
+    app.UseRequestLocalization(locOptions.Value);
+
+    // Rest of your app configuration
+}
+Step 3: Using Localized Strings in Controllers
+
+You can use IStringLocalizer<T> to localize strings. Here's an example with a HomeController:
+
+csharp
+Copy code
+public class HomeController : Controller
+{
+    private readonly IStringLocalizer<HomeController> _localizer;
+
+    public HomeController(IStringLocalizer<HomeController> localizer)
+    {
+        _localizer = localizer;
+    }
+
+    public IActionResult Index()
+    {
+        ViewData["Message"] = _localizer["Hello"];
+        return View();
+    }
+}
+Step 4: Using Localized Strings in Views
+
+In your views, you can use IViewLocalizer:
+
+csharp
+Copy code
+@inject IViewLocalizer Localizer
+@{
+    ViewData["Title"] = Localizer["Hello"];
+}
+And that's a simple setup for localization in ASP.NET 6! This setup allows you to localize strings in both your controllers and your views. You can add more languages by adding more resource files and updating your RequestLocalizationOptions in Startup.cs.
+
+
+
+
+
+User:
+Create functionality to handle locale as a part of URL for .NET 6 MVC
+
+ChatGPT:
+You can achieve this by routing. By making the locale part of the URL, users can bookmark localized versions of the site. The code also provides a way to generate localized links.
+
+Add the localization services in your Program.cs (Startup class for earlier versions)
+csharp
+Copy code
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// Localization Configuration
+var supportedCultures = new[] { "en-US", "fr" };
+var localizationOptions = new RequestLocalizationOptions().SetDefaultCulture(supportedCultures[0])
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+
+localizationOptions.RequestCultureProviders.Insert(0, new RouteDataRequestCultureProvider() { Options = localizationOptions });
+
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+builder.Services.Configure(localizationOptions);
+Update your app.MapControllers(); to include culture as a route parameter.
+csharp
+Copy code
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{culture=en-US}/{controller=Home}/{action=Index}/{id?}"
+);
+The RouteDataRequestCultureProvider is an implementation of IRequestCultureProvider which determines the culture information for a request via values in the route data. You'll also set a default culture ("en-US" in this case) in your routing.
+
+Create a custom middleware for handling unsupported cultures.
+csharp
+Copy code
+app.Use(async (context, next) =>
+{
+    var feature = context.Features.Get<IRequestCultureFeature>();
+    var routeData = context.GetRouteData();
+    var culture = routeData.Values["culture"]?.ToString();
+    var requestCulture = feature.RequestCulture;
+
+    if (!string.IsNullOrWhiteSpace(culture) && requestCulture.Culture.Name != culture)
+    {
+        var cultures = requestCulture.Provider.Options.SupportedCultures.Select(x => x.Name).ToList();
+
+        if (!cultures.Contains(culture))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            await context.Response.WriteAsync($"Culture '{culture}' not supported.");
+            return;
+        }
+    }
+
+    await next.Invoke();
+});
+This middleware checks if the requested culture is supported or not. If it's not supported, it will return a 404 error.
+
+Access localized strings in a Controller
+Here is an example of accessing the localized strings in a Controller:
+
+csharp
+Copy code
+public class HomeController : Controller
+{
+    private readonly IStringLocalizer<HomeController> _localizer;
+
+    public HomeController(IStringLocalizer<HomeController> localizer)
+    {
+        _localizer = localizer;
+    }
+
+    public IActionResult Index()
+    {
+        ViewData["Message"] = _localizer["Hello"];
+        return View();
+    }
+}
+Access localized strings in a View
+In your views, you can use IViewLocalizer:
+
+csharp
+Copy code
+@inject IViewLocalizer Localizer
+@{
+    ViewData["Title"] = Localizer["Hello"];
+}
+Create localized URLs
+For generating localized URLs, you can use the following helper:
+
+csharp
+Copy code
+@{
+    var culture = Context.Request.RouteValues["culture"];
+    var url = Url.Action("Action", "Controller", new { culture = "fr" });
+}
+This approach allows you to handle localization as part of the URL, which can improve the experience for users who want to use a specific language and bookmark pages in that language.
+
+
+
+
+
+User
+What is requestCulture is your example
+ChatGPT
+The requestCulture is an instance of the RequestCulture class in ASP.NET Core. It represents a culture and UI culture of an HTTP request. The RequestCulture class has two properties:
+
+Culture: a CultureInfo object that represents the culture of the request.
+UICulture: a CultureInfo object that represents the UI culture of the request.
+In the code example, var requestCulture = feature.RequestCulture; retrieves the current request culture feature, which is an instance of IRequestCultureFeature. This feature is provided by the RequestLocalizationMiddleware, which is used in the ASP.NET Core localization pipeline to set the culture of a request based on information it gets from RequestCultureProviders.
+
+This culture information can be used to localize and adapt the UI and the data of the request to match the user's preferred language and cultural rules.
+
+The feature.RequestCulture property gives you access to the RequestCulture object that was determined by the RequestLocalizationMiddleware. This object contains the specific culture (requestCulture.Culture) and UI culture (requestCulture.UICulture) for the current HTTP request.
+
+
+
+
+
+User:
+Tell me more ab out this line of code: var cultures = requestCulture.Provider.Options.SupportedCultures.Select(x => x.Name).ToList();
+
+ChatGPT:
+This line of code is creating a list of names of the supported cultures that are specified in the application configuration. Let's break down the line of code for clarity:
+
+requestCulture.Provider.Options.SupportedCultures: This expression accesses the SupportedCultures property from the RequestLocalizationOptions object. SupportedCultures is a list of CultureInfo objects representing the cultures that the application supports.
+
+.Select(x => x.Name): This is a LINQ (Language Integrated Query) expression that projects each element of a sequence into a new form. In this case, it's taking the CultureInfo object and returning the Name property. The Name property of a CultureInfo object is a string representing the name of the culture in the format "<languagecode2>-<country/regioncode2>". For example, "en-US" for English (United States) or "fr-FR" for French (France).
+
+.ToList(): This method is called to convert the sequence of names (which is an IEnumerable<string>) into a List<string>. This list can then be used for further processing or querying.
+
+So, var cultures = requestCulture.Provider.Options.SupportedCultures.Select(x => x.Name).ToList(); creates a list of strings, where each string is the name of a supported culture. This list can then be used to check whether a requested culture is in the list of supported cultures.
+
+
+
+
+
+User:
+requestCulture doesn't contain a definition for Provider in your example
+
+ChatGPT:
+My apologies for the confusion. You're correct; the requestCulture object, which is an instance of RequestCulture class, doesn't have a Provider property.
+
+To retrieve the list of supported cultures, you should get it from IOptions<RequestLocalizationOptions>, which is injected into your startup class or method (usually ConfigureServices).
+
+Here's how you can correct it:
+
+csharp
+Copy code
+app.Use(async (context, next) =>
+{
+    var locOptions = context.RequestServices.GetService<IOptions<RequestLocalizationOptions>>();
+    var supportedCultures = locOptions.Value.SupportedCultures.Select(c => c.Name).ToList();
+
+    var routeData = context.GetRouteData();
+    var culture = routeData.Values["culture"]?.ToString();
+    
+    if (!string.IsNullOrWhiteSpace(culture) && !supportedCultures.Contains(culture))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        await context.Response.WriteAsync($"Culture '{culture}' not supported.");
+        return;
+    }
+
+    await next.Invoke();
+});
+In this updated version of the middleware, the list of supported cultures is correctly retrieved from locOptions.Value.SupportedCultures, and the culture specified in the URL route data is checked against this list. If the culture isn't supported, a 404 error is returned. If it is supported, the middleware passes control to the next middleware in the pipeline.
+
+
+
+
+
+User:
+Create functionality to format:
+4 different formats for Date and Time for each locale;
+4 different Numbers formatted in a range of 1 - 1 000 000 000. Select a different number of digits to highlight different formatting of numbers using different delimiters;
+3 different units of measurement. Inches vs centimeters, pounds vs kilograms, liters vs oz
+
+ChatGPT:
+Sure, you can use CultureInfo and DateTime.ToString(), double.ToString(), and the RegionInfo class for number formatting.
+
+Here's an example of formatting dates, times, numbers, and units of measurement for a specific locale.
+
+For dates and times:
+
+csharp
+Copy code
+CultureInfo culture = new CultureInfo("en-US");
+
+DateTime now = DateTime.Now;
+
+string format1 = now.ToString("D", culture);
+string format2 = now.ToString("f", culture);
+string format3 = now.ToString("F", culture);
+string format4 = now.ToString("O", culture);
+
+Console.WriteLine($"Format1: {format1}");
+Console.WriteLine($"Format2: {format2}");
+Console.WriteLine($"Format3: {format3}");
+Console.WriteLine($"Format4: {format4}");
+For numbers:
+
+csharp
+Copy code
+double number1 = 123456.789;
+double number2 = 987654321.123;
+double number3 = 456789.123;
+double number4 = 654321.987;
+
+string numberFormat1 = number1.ToString("N", culture);
+string numberFormat2 = number2.ToString("N", culture);
+string numberFormat3 = number3.ToString("N", culture);
+string numberFormat4 = number4.ToString("N", culture);
+
+Console.WriteLine($"Number1: {numberFormat1}");
+Console.WriteLine($"Number2: {numberFormat2}");
+Console.WriteLine($"Number3: {numberFormat3}");
+Console.WriteLine($"Number4: {numberFormat4}");
+For units of measurement:
+
+csharp
+Copy code
+double inches = 10;
+double centimeters = inches * 2.54; // conversion factor
+Console.WriteLine($"{inches} inches is {centimeters.ToString("N", culture)} centimeters");
+
+double pounds = 10;
+double kilograms = pounds * 0.45359237; // conversion factor
+Console.WriteLine($"{pounds} pounds is {kilograms.ToString("N", culture)} kilograms");
+
+double liters = 10;
+double ounces = liters * 33.814; // conversion factor
+Console.WriteLine($"{liters} liters is {ounces.ToString("N", culture)} ounces");
+You can replace "en-US" with any culture identifier you wish to support. Each culture will have different date, time, and number formats.
+
+This code does not handle localization of measurement unit names (inches, centimeters, pounds, kilograms, liters, ounces), you might want to put these names in a resource file and handle their localization as well.
+
+Also, please note that there is no universally accepted way to convert between different units of measurements as conversion factors might vary slightly in different scientific contexts. The conversion factors used in this code are commonly used and should be accurate enough for most general purposes.
+
+
+
+
+
+User:
+Rewrite previous answer to use URL cultures in ASP .NET 6 Controllers
+
+ChatGPT:
+Absolutely, you can extract the culture from the URL and use it for localization in your controller. Here's how you can apply the same to your ASP.NET 6 Controller:
+
+First, let's create a new controller called LocalizationController. This controller will take an IStringLocalizer, IOptions of RequestLocalizationOptions, and LinkGenerator for creating URLs:
+
+csharp
+Copy code
+public class LocalizationController : Controller
+{
+    private readonly IStringLocalizer<LocalizationController> _localizer;
+    private readonly RequestLocalizationOptions _localizationOptions;
+
+    public LocalizationController(
+        IStringLocalizer<LocalizationController> localizer,
+        IOptions<RequestLocalizationOptions> localizationOptions)
+    {
+        _localizer = localizer;
+        _localizationOptions = localizationOptions.Value;
+    }
+
+    public IActionResult Index(string culture)
+    {
+        if (string.IsNullOrEmpty(culture))
+        {
+            culture = _localizationOptions.DefaultRequestCulture.Culture.Name;
+        }
+
+        CultureInfo.CurrentCulture = new CultureInfo(culture);
+        CultureInfo.CurrentUICulture = new CultureInfo(culture);
+
+        var date = DateTime.Now;
+        var number = 123456789.123;
+
+        var viewModel = new LocalizationViewModel
+        {
+            DateFormat1 = date.ToString("D"),
+            DateFormat2 = date.ToString("f"),
+            DateFormat3 = date.ToString("F"),
+            DateFormat4 = date.ToString("O"),
+            NumberFormat1 = number.ToString("N0"),
+            NumberFormat2 = number.ToString("N1"),
+            NumberFormat3 = number.ToString("N2"),
+            NumberFormat4 = number.ToString("N3"),
+        };
+
+        return View(viewModel);
+    }
+}
+In this controller, Index action retrieves the current culture from the URL, sets it as the current culture for this thread, then formats dates and numbers according to that culture.
+
+The LocalizationViewModel would be something like:
+
+csharp
+Copy code
+public class LocalizationViewModel
+{
+    public string DateFormat1 { get; set; }
+    public string DateFormat2 { get; set; }
+    public string DateFormat3 { get; set; }
+    public string DateFormat4 { get; set; }
+    public string NumberFormat1 { get; set; }
+    public string NumberFormat2 { get; set; }
+    public string NumberFormat3 { get; set; }
+    public string NumberFormat4 { get; set; }
+}
+In the Index.cshtml view, you'd display these properties like:
+
+html
+Copy code
+@model LocalizationViewModel
+
+<h2>Date Formats:</h2>
+<p>@Model.DateFormat1</p>
+<p>@Model.DateFormat2</p>
+<p>@Model.DateFormat3</p>
+<p>@Model.DateFormat4</p>
+
+<h2>Number Formats:</h2>
+<p>@Model.NumberFormat1</p>
+<p>@Model.NumberFormat2</p>
+<p>@Model.NumberFormat3</p>
+<p>@Model.NumberFormat4</p>
+This will display different date and number formats in the current culture.
+
+For units of measurements, you can add appropriate properties to the ViewModel and calculation logic to the controller action, as in the previous example.
+
+Please remember to set up localization in the Program.cs and routing as described in previous responses.
+
+
+
+
+
+User:
+Create translation of different units of measurement. Inches vs centimeters, pounds vs kilograms, liters vs oz using ASP .NET 6 and locales' resources files
+
+ChatGPT:
+To translate units of measurements and handle localization of these units, you can use the IStringLocalizer<T> service in ASP.NET Core, along with resource files.
+
+Firstly, create a resource file for each culture you wish to support. For example, you can have Resources/LocalizationController.en.resx for English, Resources/LocalizationController.fr.resx for French, and so forth.
+
+In each resource file, you would have entries for each unit you wish to localize:
+
+mathematica
+Copy code
+Name          Value
+Inches        Inches
+Centimeters   Centimeters
+Pounds        Pounds
+Kilograms     Kilograms
+Liters        Liters
+Ounces        Ounces
+And in the French version, you might have:
+
+mathematica
+Copy code
+Name          Value
+Inches        Pouces
+Centimeters   Centimètres
+Pounds        Livres
+Kilograms     Kilogrammes
+Liters        Litres
+Ounces        Onces
+Now, in your LocalizationController:
+
+csharp
+Copy code
+public class LocalizationController : Controller
+{
+    private readonly IStringLocalizer<LocalizationController> _localizer;
+    private readonly RequestLocalizationOptions _localizationOptions;
+
+    public LocalizationController(
+        IStringLocalizer<LocalizationController> localizer,
+        IOptions<RequestLocalizationOptions> localizationOptions)
+    {
+        _localizer = localizer;
+        _localizationOptions = localizationOptions.Value;
+    }
+
+    public IActionResult Index(string culture)
+    {
+        if (string.IsNullOrEmpty(culture))
+        {
+            culture = _localizationOptions.DefaultRequestCulture.Culture.Name;
+        }
+
+        CultureInfo.CurrentCulture = new CultureInfo(culture);
+        CultureInfo.CurrentUICulture = new CultureInfo(culture);
+
+        var viewModel = new LocalizationViewModel
+        {
+            Inches = _localizer["Inches"],
+            Centimeters = _localizer["Centimeters"],
+            Pounds = _localizer["Pounds"],
+            Kilograms = _localizer["Kilograms"],
+            Liters = _localizer["Liters"],
+            Ounces = _localizer["Ounces"]
+        };
+
+        return View(viewModel);
+    }
+}
+In the LocalizationViewModel:
+
+csharp
+Copy code
+public class LocalizationViewModel
+{
+    public string Inches { get; set; }
+    public string Centimeters { get; set; }
+    public string Pounds { get; set; }
+    public string Kilograms { get; set; }
+    public string Liters { get; set; }
+    public string Ounces { get; set; }
+}
+In your Index.cshtml view:
+
+html
+Copy code
+@model LocalizationViewModel
+
+<p>@Model.Inches</p>
+<p>@Model.Centimeters</p>
+<p>@Model.Pounds</p>
+<p>@Model.Kilograms</p>
+<p>@Model.Liters</p>
+<p>@Model.Ounces</p>
+Remember to configure localization in the Program.cs and routing as described in previous responses. This approach will translate the units of measurements based on the locale provided in the URL.
+
+
+
+
+
+User:
+Generate a code to use IStringLocalizer in View
+
+ChatGPT:
+You can inject the IViewLocalizer interface into your view to localize text. The IViewLocalizer service gets the same localization details as IStringLocalizer but also includes the view's path information.
+
+Let's assume you have your resource files set up correctly according to the previous responses.
+
+In your ASP.NET Core MVC view, you can use IViewLocalizer like this:
+
+csharp
+Copy code
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
+
+<h2>@Localizer["Inches"]</h2>
+<h2>@Localizer["Centimeters"]</h2>
+<h2>@Localizer["Pounds"]</h2>
+<h2>@Localizer["Kilograms"]</h2>
+<h2>@Localizer["Liters"]</h2>
+<h2>@Localizer["Ounces"]</h2>
+This will render the localized string for each of these units of measurements. The IViewLocalizer will look for a resource file that matches the view's name. For example, if your view is Views/Home/Index.cshtml, IViewLocalizer will look for a resource file named Home.Index.[culture].resx.
+
+If it's a shared view located in Views/Shared, the localizer will look for a resource file named Shared.[culture].resx. Remember to replace [culture] with the correct culture code such as en, fr, etc.
+
+Don't forget to add localization services and options in your Program.cs or Startup class, if you haven't done so already.
+
+
+
+
+
+User:
+generate a code to configure AddViewLocalization enxtension method to use Resource files
+
+ChatGPT:
+You can configure AddViewLocalization to use resource files in your Program.cs as part of setting up the application's localization services. Here's an example of how to do it in a .NET 6 application:
+
+csharp
+Copy code
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+
+// Add localization services.
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[]
+    {
+        new CultureInfo("en-US"),
+        new CultureInfo("fr-FR"),
+        // Add more cultures here.
+    };
+
+    options.DefaultRequestCulture = new RequestCulture("en-US");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+});
+
+builder.Services.AddControllersWithViews()
+    .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix);
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+var localizationOptions = app.ApplicationServices.GetService<IOptions<RequestLocalizationOptions>>().Value;
+app.UseRequestLocalization(localizationOptions);
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();
+This configuration will set up the application to use localization based on resource files located in the Resources directory of the application.
+
+The AddViewLocalization method with LanguageViewLocationExpanderFormat.Suffix parameter configures the application to look for view localization resources using the file name suffix pattern (for example, Index.fr-FR.cshtml).
+
+The Configure<RequestLocalizationOptions> section sets up the supported cultures and the default culture for the application.
+
+The UseRequestLocalization method adds the localization middleware to the pipeline, which will set the culture for each request based on the client's preferences.
+
+Finally, be sure your resource files are properly named and located. For example, to localize views, you should have resource files named after the view. If you have a view Views/Home/Index.cshtml, you should have resource files named Home.Index.en-US.resx, Home.Index.fr-FR.resx, and so on, located in the Resources directory of your application.
+
+
+
+
+
+User:
+Name conversion for Resources that will be used by AddViewLocalization
+
+ChatGPT:
+When using AddViewLocalization, the localization service needs to know where to find the corresponding resource files for each view. This is determined by the file path and the name of your view.
+
+Here is the naming and path convention you would follow when organizing your resource files for AddViewLocalization:
+
+Root Views (Views/{Controller}/{View}.cshtml): The resource files for these views should be placed in the Resources/Views/{Controller}/{View}.{culture}.resx directory.
+
+For example, if you have a view located at Views/Home/Index.cshtml, the corresponding resource file for French locale would be Resources/Views/Home/Index.fr-FR.resx.
+
+Shared Views (Views/Shared/{View}.cshtml): The resource files for these views should be placed in the Resources/Views/Shared/{View}.{culture}.resx directory.
+
+For example, for a shared view located at Views/Shared/_Layout.cshtml, the corresponding resource file for French locale would be Resources/Views/Shared/_Layout.fr-FR.resx.
+
+Areas (Areas/{Area}/Views/{Controller}/{View}.cshtml): The resource files for these views should be placed in the Resources/Areas/{Area}/Views/{Controller}/{View}.{culture}.resx directory.
+
+For example, if you have a view in an area located at Areas/MyArea/Views/Home/Index.cshtml, the corresponding resource file for French locale would be Resources/Areas/MyArea/Views/Home/Index.fr-FR.resx.
+
+Remember to replace {culture} with the correct culture code such as en, fr, etc.
+
+Make sure to set the resource files to have their Copy To Output Directory property set to Copy if newer so that the resource files are included in the build output directory.
+
+Also, remember to set the access modifier of your resource file to Public to access the resources correctly.
+
+
+
+
+
+User:
+Generate usage of resource.resx files for Ukrainian culture in ASP .NET 6
+
+ChatGPT:
+To use .resx resource files for the Ukrainian culture in your ASP.NET Core 6 application, you need to add a resource file for each of your views or controllers and name it according to the conventions provided in the previous responses.
+
+Here are the steps to do this:
+
+Create the Resource Files:
+
+For a view, you would create a .resx file in the Resources/Views/{Controller} directory. If you have a view at Views/Home/Index.cshtml, you would create a file at Resources/Views/Home/Index.uk.resx.
+
+For a controller, if you're localizing strings in the HomeController, you would create a file at Resources/Controllers/HomeController.uk.resx.
+
+For shared resources used across multiple controllers or views, you would create a file at Resources/SharedResource.uk.resx.
+
+Each resource file should contain name-value pairs for the strings you want to localize.
+
+Configure Localization Services:
+
+Add and configure localization services in Program.cs:
+
+csharp
+Copy code
+var builder = WebApplication.CreateBuilder(args);
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+
+// Add localization services.
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+var supportedCultures = new List<CultureInfo> 
+{
+    new CultureInfo("uk-UA"),
+    // Add other supported cultures here
+};
+
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture("uk-UA");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+});
+
+builder.Services.AddControllersWithViews()
+    .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix);
+
+var app = builder.Build();
+// ... rest of the code ...
+Use Localized Strings in Views and Controllers:
+
+In views, you can inject IViewLocalizer to use localized strings:
+
+html
+Copy code
+@using Microsoft.AspNetCore.Mvc.Localization
+@inject IViewLocalizer Localizer
+
+<h1>@Localizer["HelloWorld"]</h1>
+In controllers, you can use IStringLocalizer:
+
+csharp
+Copy code
+public class HomeController : Controller
+{
+    private readonly IStringLocalizer<HomeController> _localizer;
+
+    public HomeController(IStringLocalizer<HomeController> localizer)
+    {
+        _localizer = localizer;
+    }
+
+    public IActionResult Index()
+    {
+        ViewData["Message"] = _localizer["HelloWorld"];
+        return View();
+    }
+}
+Replace "HelloWorld" with the name of the resource string in your .resx file.
+
+Make sure your .resx files' Build Action is set to Embedded resource and that Copy To Output Directory is set to Do not copy. You can change these settings in the file properties.
