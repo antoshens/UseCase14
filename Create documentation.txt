@@ -1,0 +1,53 @@
+User:
+Generate default application description with 2 paragraphs and 4-10 Sentences for a ASP .NET 6 MVC application that just formats dates, numbers and units of measurements depending on the given culture in URL
+
+ChatGPT:
+Our ASP.NET 6 MVC application, aptly named "Culture-Specific Formatter", serves as a potent tool that makes formatting dates, numbers, and units of measurement a breeze for users, dependent on the culture provided in the URL. The core functionality of the app is to help developers, data analysts, and international business operators work efficiently with their globally dispersed data by easily converting these common entities into the desired local culture formats. The Culture-Specific Formatter is built using the robust and scalable ASP.NET 6 MVC framework, promising excellent performance and reliability.
+
+This application offers an intuitive interface and straightforward functionality. Simply provide the data and specify the culture in the URL, and the application takes care of the rest. It uses the given culture to correctly format dates, numbers, and units of measurement, providing a seamless way to manage and display data. Furthermore, our solution adheres to the most up-to-date cultural conventions, ensuring accurate formatting for a vast range of cultures. Whether you are dealing with financial figures, time-stamps, metric, or imperial units, the Culture-Specific Formatter aids in maintaining clarity and consistency in multicultural environments.
+
+
+
+
+
+User:
+Generate a simple description of how to run the application above locally
+
+ChatGPT:
+To run the "Culture-Specific Formatter" application on your local machine, follow the steps outlined below:
+
+Prerequisites: Make sure that you have the .NET 6 SDK installed on your machine. If not, download it from the official Microsoft website.
+
+Clone or Download the Repository: Use a git command git clone [repository_url] in your terminal or command prompt to clone the application repository onto your local machine. If you don't have git installed, you can download the repository as a ZIP file from the GitHub page and extract it.
+
+Navigate to the Application Directory: Use the command cd [repository_directory] to navigate into the root directory of the application where the .sln file resides.
+
+Restore the Packages: Run the command dotnet restore to restore the NuGet packages referenced in the project.
+
+Build the Application: Run the command dotnet build to build the application. This will compile the application and report any compilation errors.
+
+Run the Application: Finally, run the application using the command dotnet run. The application should now be running on your local machine.
+
+Open in Browser: Open your preferred web browser and visit http://localhost:5000 (or the URL displayed in your terminal after running the application). You can then test the application by appending the required culture in the URL (e.g., http://localhost:5000/?culture=en-US).
+
+Remember, the application uses the given culture in the URL to correctly format dates, numbers, and units of measurement. Adjust your input data as needed to explore the application's functionality.
+
+
+
+
+
+User:
+Provide at least 2 example urls how to change locale in the app above
+
+ChatGPT:
+To change the locale in the "Culture-Specific Formatter" application, you can append the desired culture directly in the URL. Here are two examples:
+
+United States Locale: If you wish to format your dates, numbers, and units of measurement according to the United States' conventions, you would use the culture code en-US. The URL would look like this:
+
+http://localhost:5000/?culture=en-US
+
+French Locale: If you wish to use French conventions, use the culture code fr-FR. The URL would then be:
+
+http://localhost:5000/?culture=fr-FR
+
+In these URLs, the ?culture=xx-XX part is a query string where xx-XX is the culture code. Simply replace xx-XX with the desired culture code to view your data formatted according to that particular culture's conventions.
